@@ -13,7 +13,7 @@
         let mediaStreamV=null
         let videoElement = $('.videoRoom video')[0]
         navigator.mediaDevices.enumerateDevices()
-        window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
+        window.rtcPeerConnectionConfig=[{urls: "stun:xxx.xxx.xx.xxx:3478"},{urls: "turn:xxx.xxx.xx.xxx:3478","credential":"123456","username":"root"}]
         let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
         let rtcConn = new RTCPeerConnection(configuration);
         //添加监听视频流
@@ -70,7 +70,7 @@
                         let eventJson = JSON.parse(event.data)
                         let eventType = eventJson.plugindata.data.result.event
                         if(eventType === "incomingcall"){//推送incomingcall
-                            console.log(username+"收到呼叫，是否接受。。。。。")
+                            console.log(username+"收到呼叫。。。。。")
                             $('#accept').on('click', function() {
                                 sendAnswer(videoElement,rtcConn,JSON.parse(eventJson.jsep),username)
                             })

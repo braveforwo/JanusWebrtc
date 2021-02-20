@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 public class VideoCallController {
     @RequestMapping("index")
     public String index(){
-        return "video";
+        return "videocall";
     }
 
     /**
