@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="../static/js/jquery-3.2.1.min.js"></script>
+    <script src="../static/js/adapter.js"></script>
+</head>
+<script>
+    // alert("adf")
+    $(function(){
+        let username = ""
+        let mediaStreamV=null
+        let videoElement = $('.videoRoom video')[0]
+        navigator.mediaDevices.enumerateDevices()
+        window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
+        let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
+        let rtcConn = new RTCPeerConnection(configuration);
+        //添加监听视频流
+        rtcConn.ontrack=ev => {
+                console.log("接收到视频流")
+                console.log(ev.streams)
+                $('#remoteVideo').get(0).srcObject = ev.streams[0]
+                $('#remoteVideo').get(0).onloadedmetadata = ()=>{$("#remoteVideo").get(0).play()}
+            }
+        //加载本地视频，不知道为什么不能放在call的click事件里一起运行
+        loadLocalVideo(videoElement,rtcConn)
+        //进行呼叫
+        $('#call').on('click', function() {
+            //创建offer
+            rtcConn.createOffer({
+                offerToReceiveVideo: true
+            }).then(offer => {
+                rtcConn.setLocalDescription(offer).then(()=>{
+                    let called = $("#called").val()
+                    //请求呼叫某人
+                    $.ajax({
+                        url:'/callSomeOne',
+                        type:'POST',
+                        data:{"username":username,"called":called,"rtcjsep":JSON.stringify(offer)},
+                        dataType:"text",
+                        success:function(response){
+                            alert(response)
+                        },
+                        error:function(status){
+                            //失败后执行的代码
+                            console.log(status)
+                        }
+                    });
+                })
+            });
+        })
+        //注册用户
+        $("#register").on('click',function () {
+            // alert("asdf")
+            username = $("#username").val()
+            //注册请求
+            $.ajax({
+                url:'/register',
+                type:'POST',
+                data:{"username":username},
+                dataType:"text",
+                success:function(response){
+                    alert(response)
+                    let url = "/getPush?username="+username;
+                    //sse服务器推送
+                    var source = new EventSource(url);
+                    source.onmessage = function(event)
+                    {
+                        let eventJson = JSON.parse(event.data)
+                        let eventType = eventJson.plugindata.data.result.event
+                        if(eventType === "incomingcall"){//推送incomingcall
+                            console.log(username+"收到呼叫，是否接受。。。。。")
+                            $('#accept').on('click', function() {
+                                sendAnswer(videoElement,rtcConn,JSON.parse(eventJson.jsep),username)
+                            })
+                        }else if(eventType === "accepted"){//推送incomingcall
+                            if(eventJson.jsep!=null){
+                                console.log(username+"收到answer")
+                                console.log(JSON.parse(eventJson.jsep))
+                                rtcConn.setRemoteDescription(JSON.parse(eventJson.jsep))
+                            }else {
+                                console.log("对方已接受。。。。。")
+                            }
+                        }else if(eventType === "calling"){
+                            console.log("正在呼叫。。。")
+                        }else if(eventType === "registered"){
+                            console.log("注册成功。。。")
+                        }
+
+                    };
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        })
+
+        $('#hangup').on('click',function () {
+            $.ajax({
+                url:'/hangup',
+                type:'POST',
+                data:{"username":username},
+                dataType:"text",
+                success:function(response){
+                    alert(response)
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        })
+    })
+
+    function loadLocalVideo(videoElement,rtcConn) {
+        navigator.mediaDevices.getUserMedia({video:true}).then(mediaStream=>{
+            // mediaStreamV=mediaStream
+            videoElement.srcObject = mediaStream;
+            console.log(mediaStream)
+            videoElement.onloadedmetadata = ()=>videoElement.play();
+            rtcConn.addTrack(mediaStream.getVideoTracks()[0], mediaStream)
+            //ontrack不能写在setlocalDescription里面
+        })
+    }
+
+    function sendAnswer(videoElement,rtcConn,remoteOffer,username) {
+        console.log(remoteOffer)
+        rtcConn.setRemoteDescription(remoteOffer).then(() => {
+            //创建answer
+            rtcConn.createAnswer({
+                offerToReceiveVideo: true
+            }).then(answer => {
+                console.log("发送answer")
+                console.log(answer)
+                rtcConn.setLocalDescription(answer).then(() => {
+                    //接受某人的通话
+                    $.ajax({
+                        url:'/acceptSomeOne',
+                        type:'POST',
+                        data:{"username":username,"rtcjsep":JSON.stringify(answer)},
+                        dataType:"text",
+                        success:function(response){
+                            alert(response)
+                        },
+                        error:function(status){
+                            //失败后执行的代码
+                            console.log(status)
+                        }
+                    });
+                })
+            })
+        })
+    }
+</script>
+<body>
+<div class="container">
+    <div class="videoRoom">
+        <video id='participant' width="500px" height="500px"></video>
+        <video id='remoteVideo' width="500px" height="500px"></video>
+    </div>
+    <input id="username"/>
+    <button id='register'>注册</button>
+    <input id="called"/>
+    <button id='call'>呼叫</button>
+    <button id='accept'>接受</button>
+    <button id='hangup'>挂断</button>
+</div>
+</body>
+</html>
