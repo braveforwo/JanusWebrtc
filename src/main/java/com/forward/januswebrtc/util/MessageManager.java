@@ -81,6 +81,7 @@ public class MessageManager {
                 } else if ("event".equals(jsonObject.getString("janus"))) {
 //                    String eventType = JSON.parseObject(jsonObject.getJSONObject("plugindata").getString("data")).getJSONObject("result").getString("event");
                     responses.add(JSON.parseObject(message, JanusEvent.class));
+                    needToPush.get(janusWebSocket).add(JSON.parseObject(message, JanusEvent.class));
                     //请求响应的event事件可以由controller判断推送，不再由这里判断是否推送前端，整个commitResponseMessage只做消息转化成对应的对象
 //                    if (eventType!=null&&PluginConstant.isNeedToPush(eventType)) {
 //                        needToPush.get(janusWebSocket).add(JSON.parseObject(message, JanusEvent.class));

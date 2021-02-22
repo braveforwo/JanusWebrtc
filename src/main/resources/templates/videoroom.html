@@ -3,8 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="../static/js/jquery-3.2.1.min.js"></script>
+    <script src="../static/js/adapter.js"></script>
+    <script>
+        $(function(){
+            let username = ""
+            let mediaStreamV=null
+            let videoElement = $('.videoRoom video')[0]
+            navigator.mediaDevices.enumerateDevices()
+            window.rtcPeerConnectionConfig=[{urls: "stun:xxx.xxx.xx.xxx:3478"},{urls: "turn:xxx.xxx.xx.xxx:3478","credential":"123456","username":"root"}]
+            let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
+            let rtcConn = new RTCPeerConnection(configuration);
+            //添加监听视频流
+            rtcConn.ontrack=ev => {
+                console.log("接收到视频流")
+                console.log(ev.streams)
+                $('#remoteVideo').get(0).srcObject = ev.streams[0]
+                $('#remoteVideo').get(0).onloadedmetadata = ()=>{$("#remoteVideo").get(0).play()}
+            }
+            loadLocalVideo(videoElement,rtcConn)
+            $('#createRoom').on('click',function () {
+                let publisherIdShow = $('#publisherIdShow')
+                let roomId = $('#roomId')
+                username = $("#username").val()
+                $.ajax({
+                    url:'/createRoom',
+                    type:'POST',
+                    data:{"username":username},
+                    dataType:"text",
+                    success:function(response){
+                        roomId.text("房间id:"+JSON.parse(response).plugindata.data.room)
+                        let url = "/getPush?username="+username;
+                        //sse服务器推送
+                        var source = new EventSource(url);
+                        source.onmessage = function(event)
+                        {
+                            let eventJson = JSON.parse(event.data)
+                            let eventType = eventJson.plugindata.data.videoroom
+                            if(eventType === "joined"){
+                                publisherIdShow.text("发布者id:"+eventJson.plugindata.data.id)
+                            }
+                        };
+
+                        source.onerror = function (ev) {
+                             source.close()
+                        }
+
+                    },
+                    error:function(status){
+                        //失败后执行的代码
+                        console.log(status)
+                    }
+                });
+            })
+
+            $('#publishJoinRoom').on('click',function (){
+                username = $("#username").val()
+                let roomId = $('#publishJoinRoomId').val()
+                $.ajax({
+                    url:'/publishJoinRoom',
+                    type:'POST',
+                    data:{"username":username,"roomid":roomId},
+                    dataType:"text",
+                    success:function(response){
+                        alert(response)
+                    },
+                    error:function(status){
+                        //失败后执行的代码
+                        console.log(status)
+                    }
+                });
+            })
+
+            $('#publish').on('click',function () {
+                username = $("#username").val()
+                rtcConn.createOffer({
+                    offerToReceiveVideo: true
+                }).then(offer => {
+                    rtcConn.setLocalDescription(offer).then(()=>{
+                        $.ajax({
+                            url:'/publish',
+                            type:'POST',
+                            data:{"username":username,'rtcjsep':JSON.stringify(offer)},
+                            dataType:"text",
+                            success:function(response){
+                               rtcConn.setRemoteDescription(JSON.parse(JSON.parse(response).jsep))
+                            },
+                            error:function(status){
+                                //失败后执行的代码
+                                console.log(status)
+                            }
+                        });
+
+                    })
+                });
+            })
+
+            let subscribeAnswer=null
+            $('#subscribeJoinRoom').on('click',function () {
+                username = $("#username").val()
+                let roomId = $('#subscribeJoinRoomId').val()
+                let publisherId = $('#publisherId').val()
+                $.ajax({
+                    url:'/subscribeJoinRoom',
+                    type:'POST',
+                    data:{"username":username,'roomid':roomId,"publisherid":publisherId},
+                    dataType:"text",
+                    success:function(response){
+                        alert(response)
+                        let url = "/getPush?username="+username;
+                        //sse服务器推送
+                        var source = new EventSource(url);
+                        source.onmessage = function(event)
+                        {
+                            let eventJson = JSON.parse(event.data)
+                            let eventType = eventJson.plugindata.data.videoroom
+                            if(eventType === "attached"){
+                                rtcConn.setRemoteDescription(JSON.parse(eventJson.jsep)).then(() => {
+                                    //创建answer
+                                    rtcConn.createAnswer({
+                                        offerToReceiveVideo: true
+                                    }).then(answer => {
+                                        console.log("发送answer")
+                                        console.log(answer)
+                                        rtcConn.setLocalDescription(answer).then(() => {
+                                            subscribeAnswer = answer
+                                        })
+                                    })
+                                })
+                            }
+
+                        };
+
+                        source.onerror = function (ev) {
+                            source.close()
+                        }
+
+                    },
+                    error:function(status){
+                        //失败后执行的代码
+                        console.log(status)
+                    }
+                });
+            })
+
+            $('#subscribe').on('click',function () {
+                username = $("#username").val()
+                $.ajax({
+                    url:'/startSubscribe',
+                    type:'POST',
+                    data:{"username":username,"rtcjsep":JSON.stringify(subscribeAnswer)},
+                    dataType:"text",
+                    success:function(response){
+                        alert(response)
+                    },
+                    error:function(status){
+                        //失败后执行的代码
+                        console.log(status)
+                    }
+                });
+            })
+
+
+        })
+        function loadLocalVideo(videoElement,rtcConn) {
+            navigator.mediaDevices.getUserMedia({video:true}).then(mediaStream=>{
+                // mediaStreamV=mediaStream
+                // videoElement.srcObject = mediaStream;
+                // console.log(mediaStream)
+                // videoElement.onloadedmetadata = ()=>videoElement.play();
+                rtcConn.addTrack(mediaStream.getVideoTracks()[0], mediaStream)
+                //ontrack不能写在setlocalDescription里面
+            })
+        }
+    </script>
 </head>
 <body>
-
+<div class="container">
+    <div class="videoRoom">
+        <video id='participant' width="500px" height="500px"></video>
+        <video id='remoteVideo' width="500px" height="500px"></video>
+    </div>
+    输入用户名(必填):<input id="username"/>
+    <span id="roomId"></span><button id='createRoom'>创建房间</button>
+    <input id="publishJoinRoomId"/><button id='publishJoinRoom'>作为发布者加入房间</button>
+    <span id="publisherIdShow"></span><button id='publish'>发布视频</button>
+    <input id="subscribeJoinRoomId"/><input id="publisherId"><button id='subscribeJoinRoom'>作为订阅者加入房间</button>
+    <button id='subscribe'>订阅视频</button>
+</div>
 </body>
 </html>
