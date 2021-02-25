@@ -40,7 +40,7 @@ public class JanusAnnotationTest {
         PluginHandleCreateResponse pluginHandleCreateResponse = (PluginHandleCreateResponse)janusWebSocket.getResponse().get();
         System.out.println(JSON.toJSONString(pluginHandleCreateResponse));
         long handleId = pluginHandleCreateResponse.getId();
-        VideoCallMessageRequest videoCallMessageRequest = new VideoCallMessageRequest();
+        VideoRoomMessageRequest videoCallMessageRequest = new VideoRoomMessageRequest();
         videoCallMessageRequest.setJanus("message");
         videoCallMessageRequest.setSession_id(sessionId);
         videoCallMessageRequest.setHandle_id(handleId);

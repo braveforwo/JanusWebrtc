@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; Charset=gb2312">
+    <meta http-equiv="Content-Language" content="zh-CN">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>大厅</title>
+    <!--<link rel="shortcut icon" href="../images/Logo_40.png" type="image/x-icon">-->
+    <!--Layui-->
+    <link href="../static/plugin/layui/css/layui.css" rel="stylesheet" />
+    <!--font-awesome-->
+    <link href="../static/plugin/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+    <!--全局样式表-->
+    <link href="../static/css/global.css" rel="stylesheet" />
+    <!-- 本页样式表 -->
+    <link href="../static/css/resource.css" rel="stylesheet" />
+    <script src="../static/js/jquery-3.2.1.min.js"></script>
+    <script>
+       function generateUUID() {
+                var d = new Date().getTime();
+                if (window.performance && typeof window.performance.now === "function") {
+                    d += performance.now(); //use high-precision timer if available
+                }
+                var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    var r = (d + Math.random() * 16) % 16 | 0;
+                    d = Math.floor(d / 16);
+                    return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                });
+                return uuid;
+       }
+       let username;
+       $(function () {
+           listRoom()
+           $('#createRoom').on("click",function () {
+               if(username==null){
+                   username = generateUUID()
+               }
+               let resourcemain = document.getElementById("resource-main")
+               $.ajax({
+                   url:'createRoom',
+                   type:'POST',
+                   dataType:"text",
+                   data:{"username":username},
+                   success:function(response){
+                       listRoom()
+                   },
+                   error:function(status){
+                       //失败后执行的代码
+                       console.log(status)
+                   }
+               });
+           })
+       })
+
+        function listRoom() {
+            if(username==null){
+                username = generateUUID()
+            }
+            $.ajax({
+                url:'listRoom',
+                type:'POST',
+                dataType:"html",
+                data:{"username":username},
+                success:function(response){
+                    $("#resource-main").html(response)
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <!-- 主体（一般只改变这里的内容） -->
+    <div class="blog-body">
+        <div class="blog-container">
+            <div class="blog-main">
+                <div class="blog-main">
+                    <div class="child-nav shadow">
+                        <button id="createRoom" type="button" class="layui-btn">创建房间</button>
+                    </div>
+                    <div id="resource-main" class="resource-main">
+                        <!-- 清除浮动 -->
+                        <div class="clear"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--遮罩-->
+    <div class="blog-mask animated layui-hide"></div>
+    <!-- layui.js -->
+    <script src="../static/plugin/layui/layui.js"></script>
+    <!-- 全局脚本 -->
+    <script src="../static/js/global.js"></script>
+</body>
+</html>
