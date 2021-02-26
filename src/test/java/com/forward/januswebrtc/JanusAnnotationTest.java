@@ -2,7 +2,9 @@ package com.forward.januswebrtc;
 
 import com.alibaba.fastjson.JSON;
 import com.forward.januswebrtc.common.JanusWebSocket;
+import com.forward.januswebrtc.domain.Request;
 import com.forward.januswebrtc.domain.Response;
+import com.forward.januswebrtc.domain.bean.RTCJsep;
 import com.forward.januswebrtc.domain.common.CreateSessionRequest;
 
 import com.forward.januswebrtc.domain.common.CreateSessionResponse;
@@ -16,7 +18,9 @@ import com.forward.januswebrtc.domain.plugin.videoroom.VideoRoomPublisherJoinReq
 import com.forward.januswebrtc.util.JanusClientUtil;
 import org.junit.Test;
 
+import java.util.Enumeration;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 public class JanusAnnotationTest {
@@ -189,6 +193,21 @@ public class JanusAnnotationTest {
         janusWebSocket.sendMessage(videoRoomMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
         System.out.println("destroy"+JSON.toJSONString(response1));
+    }
+    @Test
+    public void testHash(){
+        RTCJsep rtcJsep = new RTCJsep();
+        rtcJsep.setSdp("asdf");
+        RTCJsep rtcJsep1 = new RTCJsep();
+        rtcJsep1.setSdp("iopj");
+        ConcurrentHashMap<RTCJsep,String> concurrentHashMap = new ConcurrentHashMap<>();
+        concurrentHashMap.put(rtcJsep,"123");
+        concurrentHashMap.put(rtcJsep1,"456");
+        Enumeration<RTCJsep> requestEnumeration = concurrentHashMap.keys();
+        while (requestEnumeration.hasMoreElements()){
+            System.out.println(requestEnumeration.nextElement().hashCode());
+        }
+        System.out.println(concurrentHashMap.size());
     }
 
 }

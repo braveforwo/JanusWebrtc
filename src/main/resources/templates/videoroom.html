@@ -11,7 +11,7 @@
             let mediaStreamV=null
             let videoElement = $('.videoRoom video')[0]
             navigator.mediaDevices.enumerateDevices()
-            window.rtcPeerConnectionConfig=[{urls: "stun:xxx.xxx.xx.xxx:3478"},{urls: "turn:xxx.xxx.xx.xxx:3478","credential":"123456","username":"root"}]
+            window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
             let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
             let rtcConn = new RTCPeerConnection(configuration);
             //添加监听视频流
@@ -169,9 +169,9 @@
         function loadLocalVideo(videoElement,rtcConn) {
             navigator.mediaDevices.getUserMedia({video:true}).then(mediaStream=>{
                 // mediaStreamV=mediaStream
-                // videoElement.srcObject = mediaStream;
-                // console.log(mediaStream)
-                // videoElement.onloadedmetadata = ()=>videoElement.play();
+                videoElement.srcObject = mediaStream;
+                console.log(mediaStream)
+                videoElement.onloadedmetadata = ()=>videoElement.play();
                 rtcConn.addTrack(mediaStream.getVideoTracks()[0], mediaStream)
                 //ontrack不能写在setlocalDescription里面
             })

@@ -33,7 +33,9 @@ public class VideoRoomController {
     }
 
     @RequestMapping("videoroom")
-    public String VideoRoom(){
+    public String VideoRoom(String roomid,Model model){
+        model.addAttribute("roomid",roomid);
+//        System.out.println("roomid"+roomid);
         return "new_videoroom";
     }
 
@@ -44,7 +46,7 @@ public class VideoRoomController {
 
     @RequestMapping("createRoom")
     @ResponseBody
-    public String CreateRoom(String username,Model model) throws ExecutionException, InterruptedException {
+    public String CreateRoom(String username,String roomid,Model model) throws ExecutionException, InterruptedException {
         JanusWebSocket janusWebSocket = JanusClientUtil.createJanusClient(username);
         CreateSessionRequest createSessionRequest = new CreateSessionRequest();
         createSessionRequest.setJanus("create");
@@ -72,7 +74,9 @@ public class VideoRoomController {
         videoCallMessageRequest.setTransaction(UUID.randomUUID().toString());
         VideoRoomCreateRequestBody videoRoomCreateRequestBody = new VideoRoomCreateRequestBody();
         videoRoomCreateRequestBody.setRequest("create");
-        videoRoomCreateRequestBody.setPermanent(true);
+        videoRoomCreateRequestBody.setPermanent(false);
+        videoRoomCreateRequestBody.setPublishers(50L);
+        videoRoomCreateRequestBody.setRoom(Long.valueOf(roomid));
         videoCallMessageRequest.setBody(videoRoomCreateRequestBody);
         janusWebSocket.sendMessage(videoCallMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
@@ -87,6 +91,10 @@ public class VideoRoomController {
     @ResponseBody
     public String PublishJoinRoom(String username,String roomid) throws ExecutionException, InterruptedException{
         JanusWebSocket janusWebSocket = JanusClientUtil.getJanusClient(username);
+        if (janusWebSocket==null){
+            janusWebSocket = JanusClientUtil.createJanusClient(username);
+            createAndAttach(janusWebSocket);
+        }
         VideoRoomMessageRequest videoRoomMessageRequest = new VideoRoomMessageRequest();
         videoRoomMessageRequest.setJanus("message");
         videoRoomMessageRequest.setSession_id(janusWebSocket.getSession_id());
@@ -97,6 +105,7 @@ public class VideoRoomController {
         videoRoomPublisherJoinRequestBody.setRoom(Long.valueOf(roomid));
         videoRoomMessageRequest.setBody(videoRoomPublisherJoinRequestBody);
         janusWebSocket.sendMessage(videoRoomMessageRequest);
+        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         Response response1 = janusWebSocket.getResponse().get();
         return "success";
     }
@@ -114,6 +123,7 @@ public class VideoRoomController {
         VideoRoomPublisherPublishRequestBody videoRoomPublisherPublishRequestBody = new VideoRoomPublisherPublishRequestBody();
         videoRoomPublisherPublishRequestBody.setRequest("publish");
         videoRoomMessageRequest.setBody(videoRoomPublisherPublishRequestBody);
+        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         janusWebSocket.sendMessage(videoRoomMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
         return JSON.toJSONString(response1);
@@ -122,26 +132,11 @@ public class VideoRoomController {
     @RequestMapping("subscribeJoinRoom")
     @ResponseBody
     public String SubscribeJoinRoom(String username,String roomid,String publisherid) throws ExecutionException, InterruptedException{
-        JanusWebSocket janusWebSocket = JanusClientUtil.createJanusClient(username);
-        CreateSessionRequest createSessionRequest = new CreateSessionRequest();
-        createSessionRequest.setJanus("create");
-        createSessionRequest.setTransaction(UUID.randomUUID().toString());
-        janusWebSocket.sendMessage(createSessionRequest);
-        CreateSessionResponse response = (CreateSessionResponse)janusWebSocket.getResponse().get();
-        KeepAliveThread keepAliveThread = new KeepAliveThread(janusWebSocket);
-        keepAliveThread.start();
-        janusWebSocket.setKeepAliveThread(keepAliveThread);
-        long sessionId = response.getId();
-        janusWebSocket.setSession_id(sessionId);
-        PluginHandleCreateRequest pluginHandleCreateRequest = new PluginHandleCreateRequest();
-        pluginHandleCreateRequest.setJanus("attach");
-        pluginHandleCreateRequest.setTransaction(UUID.randomUUID().toString());
-        pluginHandleCreateRequest.setPlugin("janus.plugin.videoroom");
-        pluginHandleCreateRequest.setSession_id(sessionId);
-        janusWebSocket.sendMessage(pluginHandleCreateRequest);
-        PluginHandleCreateResponse pluginHandleCreateResponse = (PluginHandleCreateResponse)janusWebSocket.getResponse().get();
-        long handleId = pluginHandleCreateResponse.getId();
-        janusWebSocket.setHandle_id(handleId);
+        JanusWebSocket janusWebSocket = JanusClientUtil.getJanusClient(username);
+        if (janusWebSocket==null){
+            janusWebSocket = JanusClientUtil.createJanusClient(username);
+            createAndAttach(janusWebSocket);
+        }
         VideoRoomMessageRequest videoRoomMessageRequest = new VideoRoomMessageRequest();
         videoRoomMessageRequest.setJanus("message");
         videoRoomMessageRequest.setSession_id(janusWebSocket.getSession_id());
@@ -152,6 +147,7 @@ public class VideoRoomController {
         videoRoomSubscriberJoinRequestBody.setRoom(Long.valueOf(roomid));
         videoRoomSubscriberJoinRequestBody.setFeed(Long.valueOf(publisherid));
         videoRoomMessageRequest.setBody(videoRoomSubscriberJoinRequestBody);
+//        System.out.println(videoRoomMessageRequest);
         janusWebSocket.sendMessage(videoRoomMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
         return "success";
@@ -170,6 +166,7 @@ public class VideoRoomController {
         VideoRoomSubscriberStartRequestBody videoRoomSubscriberStartRequestBody = new VideoRoomSubscriberStartRequestBody();
         videoRoomSubscriberStartRequestBody.setRequest("start");
         videoRoomMessageRequest.setBody(videoRoomSubscriberStartRequestBody);
+        System.out.println(videoRoomMessageRequest);
         janusWebSocket.sendMessage(videoRoomMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
         return "success";
@@ -199,7 +196,7 @@ public class VideoRoomController {
         return "videoroomitem";
     }
 
-
+    //线程并发时导致pendingRequset put的时候会丢失一些request
     private void createAndAttach(JanusWebSocket janusWebSocket) throws ExecutionException, InterruptedException {
         CreateSessionRequest createSessionRequest = new CreateSessionRequest();
         createSessionRequest.setJanus("create");
@@ -207,18 +204,16 @@ public class VideoRoomController {
         janusWebSocket.sendMessage(createSessionRequest);
         CreateSessionResponse response = (CreateSessionResponse)janusWebSocket.getResponse().get();
         KeepAliveThread keepAliveThread = new KeepAliveThread(janusWebSocket);
-        keepAliveThread.start();
         janusWebSocket.setKeepAliveThread(keepAliveThread);
-        long sessionId = response.getId();
-        janusWebSocket.setSession_id(sessionId);
+        keepAliveThread.start();
+        janusWebSocket.setSession_id(response.getId());
         PluginHandleCreateRequest pluginHandleCreateRequest = new PluginHandleCreateRequest();
         pluginHandleCreateRequest.setJanus("attach");
         pluginHandleCreateRequest.setTransaction(UUID.randomUUID().toString());
         pluginHandleCreateRequest.setPlugin("janus.plugin.videoroom");
-        pluginHandleCreateRequest.setSession_id(sessionId);
+        pluginHandleCreateRequest.setSession_id(janusWebSocket.getSession_id());
         janusWebSocket.sendMessage(pluginHandleCreateRequest);
         PluginHandleCreateResponse pluginHandleCreateResponse = (PluginHandleCreateResponse)janusWebSocket.getResponse().get();
-        long handleId = pluginHandleCreateResponse.getId();
-        janusWebSocket.setHandle_id(handleId);
+        janusWebSocket.setHandle_id(pluginHandleCreateResponse.getId());
     }
 }

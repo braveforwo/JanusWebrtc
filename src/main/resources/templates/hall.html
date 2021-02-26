@@ -35,12 +35,17 @@
                if(username==null){
                    username = generateUUID()
                }
+               let roomid = $("#roomid").val()
+               if(roomid == null){
+                   alert("房间号为空，请输入房间号")
+                   return
+               }
                let resourcemain = document.getElementById("resource-main")
                $.ajax({
                    url:'createRoom',
                    type:'POST',
                    dataType:"text",
-                   data:{"username":username},
+                   data:{"username":username,"roomid":roomid},
                    success:function(response){
                        listRoom()
                    },
@@ -79,7 +84,8 @@
             <div class="blog-main">
                 <div class="blog-main">
                     <div class="child-nav shadow">
-                        <button id="createRoom" type="button" class="layui-btn">创建房间</button>
+                        <input id="roomid" style="width: 80%;float: left" type="text" name="title" required  lay-verify="required" placeholder="请输入房间号" autocomplete="off" class="layui-input">
+                        <button style="float: right;" id="createRoom" type="button" class="layui-btn">创建房间</button>
                     </div>
                     <div id="resource-main" class="resource-main">
                         <!-- 清除浮动 -->

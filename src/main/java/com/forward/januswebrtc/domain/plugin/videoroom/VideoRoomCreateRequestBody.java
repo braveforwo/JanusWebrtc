@@ -10,6 +10,8 @@ public class VideoRoomCreateRequestBody extends RequestBody {
 
     private Boolean permanent;
 
+    private Long room;
+
     private String description;
 
     private String secret;

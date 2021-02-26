@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; Charset=gb2312">
     <meta http-equiv="Content-Language" content="zh-CN">
@@ -15,20 +15,200 @@
     <link href="../static/css/global.css" rel="stylesheet" />
     <!-- 本页样式表 -->
     <link href="../static/css/resource.css" rel="stylesheet" />
+    <script src="../static/js/jquery-3.2.1.min.js"></script>
+    <script>
+        let peerConnections = []
+        let username = null
+        $(function () {
+            // alert($("#roomid").val())
+            loadLocalVideo()
+        })
+        function generatePeerConnection() {
+            window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
+            let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
+            let rtcConn = new RTCPeerConnection(configuration);
+            return rtcConn
+        }
+        function loadLocalVideo() {
+            let video = $('<video class="resource shadow"></video>')
+            $("#video-main").append(video)
+            let rtcConn = generatePeerConnection()
+            peerConnections.push(rtcConn)
+            navigator.mediaDevices.enumerateDevices()
+            navigator.mediaDevices.getUserMedia({video:true}).then(mediaStream=>{
+                video[0].srcObject = mediaStream;
+                // console.log(mediaStream)
+                video[0].onloadedmetadata = ()=>video[0].play();
+                rtcConn.addTrack(mediaStream.getVideoTracks()[0], mediaStream)
+            })
+            publishJoinRoom(rtcConn)
+        }
+
+        function publishJoinRoom(rtcConn) {
+            let username = generateUUID()
+            // console.log(username)
+            let roomId = $('#roomid').val()
+            $.ajax({
+                url:'/publishJoinRoom',
+                type:'POST',
+                data:{"username":username,"roomid":roomId},
+                dataType:"text",
+                success:function(response){
+                    // alert(response)
+                    publishVideo(username,rtcConn)
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        }
+
+        function publishVideo(username,rtcConn) {
+            rtcConn.createOffer({
+                offerToReceiveVideo: true
+            }).then(offer => {
+                rtcConn.setLocalDescription(offer).then(()=>{
+                    $.ajax({
+                        url:'/publish',
+                        type:'POST',
+                        data:{"username":username,'rtcjsep':JSON.stringify(offer)},
+                        dataType:"text",
+                        success:function(response){
+                            rtcConn.setRemoteDescription(JSON.parse(JSON.parse(response).jsep))
+                            let url = "/getPush?username="+username;
+                            //sse服务器推送
+                            let source = new EventSource(url);
+                            source.onmessage = function(event)
+                            {
+                                let eventJson = JSON.parse(event.data)
+                                let eventType = eventJson.plugindata.data.videoroom
+                                let configured = eventJson.plugindata.data.configured
+                                // console.log(eventJson)
+
+                                if(configured === "ok"){
+
+                                }
+
+                                if(eventType === "event"){
+                                    if(eventJson.plugindata.data.publishers!=null){
+                                        // alert("有人加入房间")
+                                        subscribeJoinRoom(eventJson.plugindata.data.publishers[0].id)
+                                    }
+                                }
+
+                            };
+                            source.onerror = function (ev) {
+                                source.close()
+                            }
+                        },
+                        error:function(status){
+                            //失败后执行的代码
+                            console.log(status)
+                        }
+                    });
+
+                })
+            });
+        }
+        function generateUUID() {
+            var d = new Date().getTime();
+            if (window.performance && typeof window.performance.now === "function") {
+                d += performance.now(); //use high-precision timer if available
+            }
+            var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = (d + Math.random() * 16) % 16 | 0;
+                d = Math.floor(d / 16);
+                return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+            return uuid;
+        }
+        function subscribeJoinRoom(publisherId) {
+            let username = generateUUID()
+            let roomId = $("#roomid").val()
+            $.ajax({
+                url:'/subscribeJoinRoom',
+                type:'POST',
+                data:{"username":username,'roomid':roomId,"publisherid":publisherId},
+                dataType:"text",
+                success:function(response){
+                    let url = "/getPush?username="+username;
+                    //sse服务器推送
+                    let source = new EventSource(url);
+                    source.onmessage = function(event)
+                    {
+                        let eventJson = JSON.parse(event.data)
+                        let eventType = eventJson.plugindata.data.videoroom
+                        let configured = eventJson.plugindata.data.configured
+                        // console.log(eventJson)
+                        if(eventType === "attached"){
+                            // alert("开始订阅")
+                            let rtcConn = generatePeerConnection()
+                            peerConnections.push(rtcConn)
+                            rtcConn.ontrack = ev => {
+                                let video = $('<video class="resource shadow"></video>')
+                                $("#video-main").append(video)
+                                peerConnections.push(rtcConn)
+                                video[0].srcObject = ev.streams[0];
+                                video[0].onloadedmetadata = ()=>video[0].play();
+                            }
+                            rtcConn.setRemoteDescription(JSON.parse(eventJson.jsep)).then(() => {
+                                //创建answer
+                                rtcConn.createAnswer({
+                                    offerToReceiveVideo: true
+                                }).then(answer => {
+                                    // console.log("发送answer")
+                                    // console.log(answer)
+                                    rtcConn.setLocalDescription(answer).then(() => {
+                                        startSubscribe(username,answer)
+                                    })
+                                })
+                            })
+                        }
+
+                        if(configured === "ok"){
+
+                        }
+
+                    };
+                    source.onerror = function (ev) {
+                        source.close()
+                    }
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        }
+        function startSubscribe(username,subscribeAnswer) {
+            $.ajax({
+                url:'/startSubscribe',
+                type:'POST',
+                data:{"username":username,"rtcjsep":JSON.stringify(subscribeAnswer)},
+                dataType:"text",
+                success:function(response){
+                    // alert(response)
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        }
+    </script>
 </head>
 <body>
 <!-- 主体（一般只改变这里的内容） -->
+<input id="roomid" th:value="${roomid}" type="hidden">
 <div class="blog-body">
     <div class="blog-container">
         <div class="blog-main">
             <div class="blog-main">
-                <div class="child-nav shadow">
-                    <button type="button" class="layui-btn">创建房间</button>
-                </div>
-                <div class="resource-main">
-                    <div class="resource shadow">
-
-                    </div>
+<!--                <div class="child-nav shadow">-->
+<!--                    <button type="button" class="layui-btn">创建房间</button>-->
+<!--                </div>-->
+                <div id="video-main" class="resource-main">
                     <!-- 清除浮动 -->
                     <div class="clear"></div>
                 </div>

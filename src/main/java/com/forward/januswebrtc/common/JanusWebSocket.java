@@ -1,5 +1,6 @@
 package com.forward.januswebrtc.common;
 
+import com.alibaba.fastjson.JSON;
 import com.forward.januswebrtc.domain.Request;
 import com.forward.januswebrtc.domain.Response;
 import com.forward.januswebrtc.util.MessageManager;
@@ -61,7 +62,7 @@ public class JanusWebSocket extends WebSocketClient{
 
     @Override
     public void onMessage(String s) {
-        System.out.println(s);
+//        System.out.println(s);
         MessageManager.THE_ONLY_ONE_MANAGER.commitResponseMessage(this,s);
     }
 
@@ -77,7 +78,7 @@ public class JanusWebSocket extends WebSocketClient{
 
     public void sendMessage(Request request){
         this.send(request.turnToString());
-        response = new CompletableFuture<>();
+        setResponse(new CompletableFuture<>());
         MessageManager.THE_ONLY_ONE_MANAGER.pendRequestMessage(request,response);
     }
 }

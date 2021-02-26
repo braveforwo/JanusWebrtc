@@ -10,6 +10,7 @@ import com.forward.januswebrtc.domain.common.JanusEvent;
 import com.forward.januswebrtc.domain.common.JanusResponse;
 import com.forward.januswebrtc.domain.constant.PluginConstant;
 
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -62,11 +63,11 @@ public class MessageManager {
      * @param janusWebSocket 调用当前方法的janusWebSocket
      * @param message janusWebSocket的接收消息
      */
-    public  void commitResponseMessage(JanusWebSocket janusWebSocket,String message){
+    public void commitResponseMessage(JanusWebSocket janusWebSocket,String message){
         JSONObject jsonObject = JSON.parseObject(message);
         //获取当前响应的transaction具有唯一性
         String uid = (String)jsonObject.get("transaction");
-
+//        System.out.println(uid);
         Request request = null;
         //通过uid获取对应的请求
         if(uid!=null) request = getRelatedRequestByUid(uid);
@@ -82,6 +83,7 @@ public class MessageManager {
 //                    String eventType = JSON.parseObject(jsonObject.getJSONObject("plugindata").getString("data")).getJSONObject("result").getString("event");
                     responses.add(JSON.parseObject(message, JanusEvent.class));
                     needToPush.get(janusWebSocket).add(JSON.parseObject(message, JanusEvent.class));
+//                    System.out.println();
                     //请求响应的event事件可以由controller判断推送，不再由这里判断是否推送前端，整个commitResponseMessage只做消息转化成对应的对象
 //                    if (eventType!=null&&PluginConstant.isNeedToPush(eventType)) {
 //                        needToPush.get(janusWebSocket).add(JSON.parseObject(message, JanusEvent.class));
@@ -109,8 +111,16 @@ public class MessageManager {
         }
     }
 
-    public void pendRequestMessage(Request request, CompletableFuture<Response> response){
+    public synchronized void pendRequestMessage(Request request, CompletableFuture<Response> response){
+        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+JSON.toJSONString(request));
         pendingRequest.put(request,response);
+        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+"--------------before"+JSON.toJSONString(request));
+        Enumeration<Request> requestEnumeration = pendingRequest.keys();
+        while (requestEnumeration.hasMoreElements()){
+            Request request1 = requestEnumeration.nextElement();
+            System.out.println(request1.hashCode()+"-------"+pendingRequest.get(request1).hashCode()+JSON.toJSONString(request1));
+        }
+        System.out.println(pendingRequest.size()+"--------------end");
     }
 
 
@@ -146,10 +156,12 @@ public class MessageManager {
     }
     private void onCompeleted(Response ref) {
         Request req = getRelatedRequest(ref);
-        CompletableFuture<Response> resp = (CompletableFuture<Response>) pendingRequest.get(req);
-        //返回响应对象
-        resp.complete(ref);
-        pendingRequest.remove(req);
+        if(req!=null){
+            CompletableFuture<Response> resp = (CompletableFuture<Response>) pendingRequest.get(req);
+            //返回响应对象
+            resp.complete(ref);
+            pendingRequest.remove(req);
+        }
     }
 
     private void isOnceResponse(Boolean once,Response ref,Request request){
