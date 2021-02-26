@@ -8,9 +8,7 @@ import com.forward.januswebrtc.domain.Request;
 import com.forward.januswebrtc.domain.Response;
 import com.forward.januswebrtc.domain.common.JanusEvent;
 import com.forward.januswebrtc.domain.common.JanusResponse;
-import com.forward.januswebrtc.domain.constant.PluginConstant;
 
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -111,16 +109,18 @@ public class MessageManager {
         }
     }
 
-    public synchronized void pendRequestMessage(Request request, CompletableFuture<Response> response){
-        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+JSON.toJSONString(request));
+    public void pendRequestMessage(Request request, CompletableFuture<Response> response){
+//        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+JSON.toJSONString(request));
+//        System.out.println(JSON.toJSONString(request));
         pendingRequest.put(request,response);
-        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+"--------------before"+JSON.toJSONString(request));
-        Enumeration<Request> requestEnumeration = pendingRequest.keys();
-        while (requestEnumeration.hasMoreElements()){
-            Request request1 = requestEnumeration.nextElement();
-            System.out.println(request1.hashCode()+"-------"+pendingRequest.get(request1).hashCode()+JSON.toJSONString(request1));
-        }
-        System.out.println(pendingRequest.size()+"--------------end");
+//        System.out.println(pendingRequest.size()+request.hashCode()+"--------"+response.hashCode()+"--------------before"+JSON.toJSONString(request));
+//        Enumeration<Request> requestEnumeration = pendingRequest.keys();
+//        while (requestEnumeration.hasMoreElements()){
+//            Request request1 = requestEnumeration.nextElement();
+////            System.out.println(JSON.toJSONString(request));
+//            System.out.println(request1.hashCode()+"-------"+pendingRequest.get(request1).hashCode()+JSON.toJSONString(request1));
+//        }
+//        System.out.println(pendingRequest.size()+"--------------end");
     }
 
 

@@ -18,7 +18,6 @@
     <script src="../static/js/jquery-3.2.1.min.js"></script>
     <script>
         let peerConnections = []
-        let username = null
         $(function () {
             // alert($("#roomid").val())
             loadLocalVideo()
@@ -30,7 +29,7 @@
             return rtcConn
         }
         function loadLocalVideo() {
-            let video = $('<video class="resource shadow"></video>')
+            let video = $('<video class="resource"></video>')
             $("#video-main").append(video)
             let rtcConn = generatePeerConnection()
             peerConnections.push(rtcConn)
@@ -131,6 +130,7 @@
                 type:'POST',
                 data:{"username":username,'roomid':roomId,"publisherid":publisherId},
                 dataType:"text",
+                async:false,
                 success:function(response){
                     let url = "/getPush?username="+username;
                     //sse服务器推送
@@ -140,7 +140,6 @@
                         let eventJson = JSON.parse(event.data)
                         let eventType = eventJson.plugindata.data.videoroom
                         let configured = eventJson.plugindata.data.configured
-                        // console.log(eventJson)
                         if(eventType === "attached"){
                             // alert("开始订阅")
                             let rtcConn = generatePeerConnection()
@@ -150,6 +149,7 @@
                                 $("#video-main").append(video)
                                 peerConnections.push(rtcConn)
                                 video[0].srcObject = ev.streams[0];
+                                console.log(ev.streams)
                                 video[0].onloadedmetadata = ()=>video[0].play();
                             }
                             rtcConn.setRemoteDescription(JSON.parse(eventJson.jsep)).then(() => {
@@ -158,8 +158,8 @@
                                     offerToReceiveVideo: true
                                 }).then(answer => {
                                     // console.log("发送answer")
-                                    // console.log(answer)
                                     rtcConn.setLocalDescription(answer).then(() => {
+                                        console.log(answer)
                                         startSubscribe(username,answer)
                                     })
                                 })
@@ -182,13 +182,15 @@
             });
         }
         function startSubscribe(username,subscribeAnswer) {
+            console.log(username)
             $.ajax({
                 url:'/startSubscribe',
                 type:'POST',
                 data:{"username":username,"rtcjsep":JSON.stringify(subscribeAnswer)},
                 dataType:"text",
+                async:false,
                 success:function(response){
-                    // alert(response)
+                   console.log(response)
                 },
                 error:function(status){
                     //失败后执行的代码

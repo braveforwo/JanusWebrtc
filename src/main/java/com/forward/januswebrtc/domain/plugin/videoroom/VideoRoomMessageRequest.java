@@ -5,6 +5,7 @@ import com.forward.januswebrtc.annotation.PluginCommand;
 import com.forward.januswebrtc.domain.Request;
 import lombok.Data;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Data

@@ -105,7 +105,7 @@ public class VideoRoomController {
         videoRoomPublisherJoinRequestBody.setRoom(Long.valueOf(roomid));
         videoRoomMessageRequest.setBody(videoRoomPublisherJoinRequestBody);
         janusWebSocket.sendMessage(videoRoomMessageRequest);
-        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
+//        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         Response response1 = janusWebSocket.getResponse().get();
         return "success";
     }
@@ -123,7 +123,7 @@ public class VideoRoomController {
         VideoRoomPublisherPublishRequestBody videoRoomPublisherPublishRequestBody = new VideoRoomPublisherPublishRequestBody();
         videoRoomPublisherPublishRequestBody.setRequest("publish");
         videoRoomMessageRequest.setBody(videoRoomPublisherPublishRequestBody);
-        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
+//        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         janusWebSocket.sendMessage(videoRoomMessageRequest);
         Response response1 = janusWebSocket.getResponse().get();
         return JSON.toJSONString(response1);
@@ -166,9 +166,11 @@ public class VideoRoomController {
         VideoRoomSubscriberStartRequestBody videoRoomSubscriberStartRequestBody = new VideoRoomSubscriberStartRequestBody();
         videoRoomSubscriberStartRequestBody.setRequest("start");
         videoRoomMessageRequest.setBody(videoRoomSubscriberStartRequestBody);
-        System.out.println(videoRoomMessageRequest);
+//        System.out.println(videoRoomMessageRequest);
+        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         janusWebSocket.sendMessage(videoRoomMessageRequest);
-        Response response1 = janusWebSocket.getResponse().get();
+//        Response response1 = janusWebSocket.getResponse().get();
+//        System.out.println(JSON.toJSONString(response1));
         return "success";
     }
 
@@ -196,7 +198,8 @@ public class VideoRoomController {
         return "videoroomitem";
     }
 
-    //线程并发时导致pendingRequset put的时候会丢失一些request
+    //在并发的情况下会出现绑定插件请求pendingRequest put的时候发现会被覆盖（经打印日志发现疑似PluginHandleCreateRequest hash值相同被覆盖，
+    //在PluginHandleCreateRequest覆写hashCode方法后解决）
     private void createAndAttach(JanusWebSocket janusWebSocket) throws ExecutionException, InterruptedException {
         CreateSessionRequest createSessionRequest = new CreateSessionRequest();
         createSessionRequest.setJanus("create");

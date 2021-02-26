@@ -4,6 +4,8 @@ import com.forward.januswebrtc.annotation.JanusCommand;
 import com.forward.januswebrtc.domain.common.JanusRequest;
 import lombok.Data;
 
+import java.util.Objects;
+
 /**
  * 绑定插件请求
  */
@@ -17,5 +19,10 @@ public class PluginHandleCreateRequest extends JanusRequest {
     public PluginHandleCreateRequest()
     {
         this.plugin = PLUGIN_NAME;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(transaction);
     }
 }
