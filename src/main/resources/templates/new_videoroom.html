@@ -30,6 +30,7 @@
             let rtcConn = new RTCPeerConnection(configuration);
             return rtcConn
         }
+        //加载本地视频
         function loadLocalVideo() {
             let video = $('<video class="resource"></video>')
             $("#video-main").append(video)
@@ -43,10 +44,9 @@
                 publishJoinRoom(rtcConn)
             })
         }
-
+        //以发布者加入房间
         function publishJoinRoom(rtcConn) {
             let username = generateUUID()
-            // console.log(username)
             let roomId = $('#roomid').val()
             $.ajax({
                 url:'/publishJoinRoom',
@@ -66,6 +66,7 @@
                 }
             });
         }
+        //发布视频
         function publishVideo(username,rtcConn) {
             rtcConn.createOffer({
                 offerToReceiveVideo: true
@@ -115,6 +116,7 @@
                 })
             });
         }
+        //生成uuid
         function generateUUID() {
             var d = new Date().getTime();
             if (window.performance && typeof window.performance.now === "function") {
@@ -127,6 +129,7 @@
             });
             return uuid;
         }
+        //以订阅者加入房间
         function subscribeJoinRoom(publisherId) {
             let username = generateUUID()
             let roomId = $("#roomid").val()
@@ -185,6 +188,7 @@
                 }
             });
         }
+        //开始订阅
         function startSubscribe(username,subscribeAnswer) {
             console.log(username)
             $.ajax({
@@ -202,6 +206,7 @@
                 }
             });
         }
+        //列出当前房间的所有参与者（发布者）并订阅他们
         function listParticipants(){
             let username = generateUUID()
             let roomid = $("#roomid").val()
