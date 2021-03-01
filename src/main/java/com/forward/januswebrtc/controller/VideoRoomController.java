@@ -9,7 +9,6 @@ import com.forward.januswebrtc.domain.bean.RTCJsep;
 import com.forward.januswebrtc.domain.common.CreateSessionRequest;
 import com.forward.januswebrtc.domain.common.CreateSessionResponse;
 import com.forward.januswebrtc.domain.common.JanusEvent;
-import com.forward.januswebrtc.domain.common.JanusResponse;
 import com.forward.januswebrtc.domain.event.VideoRoomEvent;
 import com.forward.januswebrtc.domain.plugin.PluginHandleCreateRequest;
 import com.forward.januswebrtc.domain.plugin.PluginHandleCreateResponse;
@@ -19,7 +18,6 @@ import com.forward.januswebrtc.util.JanusClientUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.UUID;
@@ -107,7 +105,7 @@ public class VideoRoomController {
         janusWebSocket.sendMessage(videoRoomMessageRequest);
 //        System.out.println(JSON.toJSONString(videoRoomMessageRequest));
         Response response1 = janusWebSocket.getResponse().get();
-        return "success";
+        return JSON.toJSONString(response1);
     }
 
     @RequestMapping("publish")
@@ -196,6 +194,29 @@ public class VideoRoomController {
         }
 
         return "videoroomitem";
+    }
+
+    @RequestMapping("listParticipants")
+    @ResponseBody
+    public String ListParticipants(String username,String roomid,Model model) throws ExecutionException, InterruptedException{
+        JanusWebSocket janusWebSocket = JanusClientUtil.getJanusClient(username);
+        if (janusWebSocket==null){
+            janusWebSocket = JanusClientUtil.createJanusClient(username);
+            createAndAttach(janusWebSocket);
+        }
+        VideoRoomMessageRequest videoRoomMessageRequest = new VideoRoomMessageRequest();
+        videoRoomMessageRequest.setJanus("message");
+        videoRoomMessageRequest.setSession_id(janusWebSocket.getSession_id());
+        videoRoomMessageRequest.setHandle_id(janusWebSocket.getHandle_id());
+        videoRoomMessageRequest.setTransaction(UUID.randomUUID().toString());
+        VideoRoomListParticipantsRequestBody videoRoomListParticipantsRequestBody = new VideoRoomListParticipantsRequestBody();
+        videoRoomListParticipantsRequestBody.setRequest("listparticipants");
+        videoRoomListParticipantsRequestBody.setRoom(Long.valueOf(roomid));
+        videoRoomMessageRequest.setBody(videoRoomListParticipantsRequestBody);
+        janusWebSocket.sendMessage(videoRoomMessageRequest);
+        Response response1 = janusWebSocket.getResponse().get();
+        janusWebSocket.close();
+        return JSON.toJSONString(response1);
     }
 
     //在并发的情况下会出现绑定插件请求pendingRequest put的时候发现会被覆盖（经打印日志发现疑似PluginHandleCreateRequest hash值相同被覆盖，

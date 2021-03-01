@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class JanusClientUtil {
     private static final ConcurrentHashMap<String, JanusWebSocket> wsclients = new ConcurrentHashMap<>();
-    private static final String serverURI = "ws://129.211.93.165:8188";
+    private static final String serverURI = "ws://xxx.xxx.xxx.xxx:8188";
 
     /**
      * 获取januswebsocket

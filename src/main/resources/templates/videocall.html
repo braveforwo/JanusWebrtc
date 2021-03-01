@@ -13,7 +13,7 @@
         let mediaStreamV=null
         let videoElement = $('.videoRoom video')[0]
         navigator.mediaDevices.enumerateDevices()
-        window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
+        window.rtcPeerConnectionConfig=[{urls: "stun:xxx.xxx.xxx.xxx:3478"},{urls: "turn:xxx.xxx.xxx.xxx:3478","credential":"123456","username":"root"}]
         let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
         let rtcConn = new RTCPeerConnection(configuration);
         //添加监听视频流

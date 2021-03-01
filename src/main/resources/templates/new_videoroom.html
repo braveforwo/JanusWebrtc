@@ -17,13 +17,15 @@
     <link href="../static/css/resource.css" rel="stylesheet" />
     <script src="../static/js/jquery-3.2.1.min.js"></script>
     <script>
-        let peerConnections = []
+        let peerConnections = {}
+        let currentPublisherId = null
         $(function () {
             // alert($("#roomid").val())
             loadLocalVideo()
+            listParticipants()
         })
         function generatePeerConnection() {
-            window.rtcPeerConnectionConfig=[{urls: "stun:129.211.93.165:3478"},{urls: "turn:129.211.93.165:3478","credential":"123456","username":"root"}]
+            window.rtcPeerConnectionConfig=[{urls: "stun:xxx.xxx.xxx.xxx:3478"},{urls: "turn:xxx.xxx.xxx.xxx:3478","credential":"123456","username":"root"}]
             let configuration = !window.rtcPeerConnectionConfig ? {} : window.rtcPeerConnectionConfig;
             let rtcConn = new RTCPeerConnection(configuration);
             return rtcConn
@@ -32,15 +34,14 @@
             let video = $('<video class="resource"></video>')
             $("#video-main").append(video)
             let rtcConn = generatePeerConnection()
-            peerConnections.push(rtcConn)
             navigator.mediaDevices.enumerateDevices()
             navigator.mediaDevices.getUserMedia({video:true}).then(mediaStream=>{
                 video[0].srcObject = mediaStream;
                 // console.log(mediaStream)
                 video[0].onloadedmetadata = ()=>video[0].play();
                 rtcConn.addTrack(mediaStream.getVideoTracks()[0], mediaStream)
+                publishJoinRoom(rtcConn)
             })
-            publishJoinRoom(rtcConn)
         }
 
         function publishJoinRoom(rtcConn) {
@@ -53,7 +54,10 @@
                 data:{"username":username,"roomid":roomId},
                 dataType:"text",
                 success:function(response){
-                    // alert(response)
+                    console.log(response)
+                    let eventJson = JSON.parse(response)
+                    currentPublisherId = eventJson.plugindata.data.id
+                    peerConnections[currentPublisherId] = rtcConn
                     publishVideo(username,rtcConn)
                 },
                 error:function(status){
@@ -62,7 +66,6 @@
                 }
             });
         }
-
         function publishVideo(username,rtcConn) {
             rtcConn.createOffer({
                 offerToReceiveVideo: true
@@ -100,6 +103,8 @@
                             source.onerror = function (ev) {
                                 source.close()
                             }
+
+
                         },
                         error:function(status){
                             //失败后执行的代码
@@ -143,11 +148,10 @@
                         if(eventType === "attached"){
                             // alert("开始订阅")
                             let rtcConn = generatePeerConnection()
-                            peerConnections.push(rtcConn)
                             rtcConn.ontrack = ev => {
                                 let video = $('<video class="resource shadow"></video>')
                                 $("#video-main").append(video)
-                                peerConnections.push(rtcConn)
+                                peerConnections[generateUUID()] = rtcConn;
                                 video[0].srcObject = ev.streams[0];
                                 console.log(ev.streams)
                                 video[0].onloadedmetadata = ()=>video[0].play();
@@ -191,6 +195,31 @@
                 async:false,
                 success:function(response){
                    console.log(response)
+                },
+                error:function(status){
+                    //失败后执行的代码
+                    console.log(status)
+                }
+            });
+        }
+        function listParticipants(){
+            let username = generateUUID()
+            let roomid = $("#roomid").val()
+            $.ajax({
+                url:'/listParticipants',
+                type:'POST',
+                data:{"username":username,'roomid':roomid},
+                dataType:"text",
+                success:function(response){
+                   let responseJson = JSON.parse(response)
+                    console.log(responseJson)
+                   let listparticipants = responseJson.plugindata.data.participants
+                   for(var index = 0;index<listparticipants.length;index++){
+                       let publisher =listparticipants[index]
+                       if(publisher.id!==currentPublisherId&&peerConnections[publisher.id]!==null){
+                           subscribeJoinRoom(publisher.id)
+                       }
+                   }
                 },
                 error:function(status){
                     //失败后执行的代码
